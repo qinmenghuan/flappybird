@@ -1,0 +1,206 @@
+<!doctype html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no">
+
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="mobile-web-app-capable" content="yes">
+
+	<title>FlappyJS</title>
+
+	<script src="sprite.js"></script>
+
+	<style>
+	canvas {
+		display: block;
+		position: absolute;
+		margin: auto;
+		top: 0;
+		bottom: 0;
+		left: 0;
+		right: 0;
+	}
+	</style>
+</head>
+<body>
+<script>
+	// 全局变量
+	var
+	canvas,		// 面板
+	ctx,		// 内容
+	width,
+	height,
+
+	fgpos=0,
+	frames=0,
+	score=0,	// 等分
+	best=0,		// 最高得分
+	currentstate,	// 当前状态
+	status={
+		Splash:0,	// 准备游戏
+		Game:1,		// 游戏中
+		Score:2		// 得分
+	},
+
+	// 小鸟
+	bird={
+		x:80,
+		y:0,
+		frame:0,		// 小鸟形态的index
+		velocity:0,		// 速度
+		animation:[0,1,2,1],	// 小鸟的index集合
+		rotation:0,
+		gravity:0.25,		// 加速度
+		_jump:4.6,
+
+		// 跳跃
+		jump:function () {
+			this.velocity=-this._jump;
+		},
+
+		update:function () {
+			// 通过计时器计算小鸟的状态index
+			var n=currentstate===status.Splash?10:5;
+			this.frame+=frames%n===0?1:0;
+			this.frame%=this.animation.length;
+
+			// 当是飞行状态   小鸟上下飞行
+			if(currentstate===status.Splash){
+				this.y=height-280+5*Math.cos(frames/10);
+			}
+		},
+
+		// 画小鸟
+		draw:function (ctx) {
+			// 保存当前的状态
+			ctx.save();
+			// 重新映射画布上(0,0)的位置
+			ctx.translate(this.x,this.y);
+			// 画布的旋转朝向
+			ctx.rotate(this.rotation);
+			var n=this.animation[this.frame];	// 当前小鸟的index
+			s_bird[n].draw(ctx,-s_bird[n].width/2,-s_bird[n].height/2);
+			ctx.restore();	// 恢复到之前默认状态
+		}
+
+	},
+
+	// 障碍物
+	pipes={
+		// 更新
+		update:function () {
+			
+		},
+		
+		draw:function (ctx) {
+			
+		}
+	};
+
+	// 初始化方法
+	main();
+
+	// 点击事件
+	function onpress(evt) {
+		switch(currentstate){
+			case status.Splash:
+				currentstate=status.Game;
+				bird.jump();
+				break;
+			case status.Game:
+				bird.jump();
+				break;
+			case status.Score:
+				break;
+		}
+	}
+
+	// 初始化方法
+	function main() {
+		canvas=document.createElement("canvas");
+		width=window.innerWidth;
+		height=window.innerHeight;
+
+		// 监听事件的类型
+		var evt="touchstart";
+		if(width>=500){
+			width=320;
+			height=480;
+			canvas.style.border="1px solid #000";
+			evt="mousedown";
+		}
+		document.addEventListener(evt,onpress);
+
+		// 设置当前的游戏状态
+		currentstate=status.Splash;
+		// 添加canvas
+		canvas.width=width;
+		canvas.height=height;
+		ctx=canvas.getContext("2d");
+		document.body.appendChild(canvas);
+
+		// 添加图片
+		var img=new Image();
+		img.onload=function () {
+			// 初始化游戏对象
+			initSprites(this);
+			// 设置背景颜色
+			ctx.fillStyle=s_bg.color;
+			run();
+		}
+		img.src="res/sheet.png";
+	}
+
+	// 开始游戏
+	function run() {
+		var loop=function () {
+			update();
+			render();
+			window.requestAnimationFrame(loop,canvas);
+		}
+		window.requestAnimationFrame(loop,canvas);
+	}
+
+	// 更新一些状态和坐标点
+	function update() {
+		frames++;
+		// 背景区域
+		fgpos=(fgpos-2 )%14;
+//		console.log(fgpos);
+		// 更新鸟
+		bird.update();
+	}
+
+	// 渲染
+	function render() {
+		// 渲染背景颜色
+		ctx.fillRect(0,0,width,height);
+		// 渲染背景图片
+		s_bg.draw(ctx,0,height-s_bg.height);
+		s_bg.draw(ctx,s_bg.width,height-s_bg.height);
+
+		// 渲染小鸟，障碍物
+		bird.draw(ctx);
+		pipes.draw(ctx);
+
+		// 游戏区域
+		s_fg.draw(ctx,fgpos,height-s_fg.height);
+		s_fg.draw(ctx,fgpos+s_fg.width,height-s_fg.height);
+
+		var width2=width/2;
+
+		// 如果状态是准备游戏
+		if(currentstate===status.Splash){
+			// 显示操作提示
+			s_splash.draw(ctx,width2-s_splash.width/2,height-300);
+			// 文本提示
+			s_text.GetReady.draw(ctx,width2-s_text.GetReady.width/2,height-380);
+
+//			s_splash.draw(ctx,);
+		}
+	}
+
+</script>
+</body>
+</html>
