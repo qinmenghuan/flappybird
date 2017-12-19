@@ -33,11 +33,16 @@
 	height,
 
 	fgpos=0,
-	frames=0,
+	frames=0,	// 计数器
 	score=0,	// 等分
 	best=0,		// 最高得分
 	currentstate,	// 当前状态
-	status={
+//	status={
+//		Splash:0,	// 准备游戏
+//		Game:1,		// 游戏中
+//		Score:2		// 得分
+//	},
+	gameStatus={
 		Splash:0,	// 准备游戏
 		Game:1,		// 游戏中
 		Score:2		// 得分
@@ -48,7 +53,7 @@
 		x:80,
 		y:0,
 		frame:0,		// 小鸟形态的index
-		velocity:0,		// 速度
+		velocity:0,		// 向下掉的速度
 		animation:[0,1,2,1],	// 小鸟的index集合
 		rotation:0,
 		gravity:0.25,		// 加速度
@@ -61,13 +66,34 @@
 
 		update:function () {
 			// 通过计时器计算小鸟的状态index
-			var n=currentstate===status.Splash?10:5;
+			var n=currentstate===gameStatus.Splash?10:5;
 			this.frame+=frames%n===0?1:0;
 			this.frame%=this.animation.length;
 
 			// 当是飞行状态   小鸟上下飞行
-			if(currentstate===status.Splash){
+			if(currentstate===gameStatus.Splash){
 				this.y=height-280+5*Math.cos(frames/10);
+			}else{
+				// 自由落体
+				this.velocity+=this.gravity;	// 增加速度
+				this.y+=this.velocity;	// 向下落
+
+				// 如果落到底
+				if(this.y>=height-s_fg.height-10){
+					this.y=height-s_fg.height-10;
+					if(currentstate===gameStatus.Game){
+						currentstate=gameStatus.Score;
+					}
+					this.velocity=this._jump;
+				}
+				// 如果小鸟的速度过大 ，形态，小鸟的方向变化
+				if(this.velocity>=this._jump){
+					// 小鸟的形态
+					this.frame=1;
+					this.rotation=Math.min(Math.PI/2,this.rotation+0.3);
+				}else{
+					this.rotation=-0.3;
+				}
 			}
 		},
 
@@ -88,13 +114,40 @@
 
 	// 障碍物
 	pipes={
+		_pipes:[],
+		// 重置障碍物列表
+		reset:function () {
+//			this._pipes=[];
+		},
 		// 更新
 		update:function () {
-			
+			// 间隔触发
+			if(frames % 100===0){
+				var _y=height-(s_pipeSouth.height+s_fg.height+120+200*Math.random());
+				this._pipes.push({
+					x:500,
+					y:_y,
+					width:s_pipeSouth.width,
+					height:s_pipeSouth.height
+				});
+			}
+			// 每个障碍物向左移动
+			for(var i=0,len=this._pipes.length;i<len;i++){
+				var p = this._pipes[i];
+				p.x-=2;
+				if(p.x<-50){
+					this._pipes.splice(i,1);
+					i--;
+					len--;
+				}
+			}
 		},
-		
 		draw:function (ctx) {
-			
+			for(var i=0,len=this._pipes.length;i<len;i++){
+				var p=this._pipes[i];
+				s_pipeSouth.draw(ctx,p.x,p.y);
+				s_pipeNorth.draw(ctx,p.x,p.y+80+p.height);
+			}
 		}
 	};
 
@@ -103,15 +156,16 @@
 
 	// 点击事件
 	function onpress(evt) {
+
 		switch(currentstate){
-			case status.Splash:
-				currentstate=status.Game;
+			case gameStatus.Splash:
+				currentstate=gameStatus.Game;
 				bird.jump();
 				break;
-			case status.Game:
+			case gameStatus.Game:
 				bird.jump();
 				break;
-			case status.Score:
+			case gameStatus.Score:
 				break;
 		}
 	}
@@ -133,7 +187,7 @@
 		document.addEventListener(evt,onpress);
 
 		// 设置当前的游戏状态
-		currentstate=status.Splash;
+		currentstate=gameStatus.Splash;
 		// 添加canvas
 		canvas.width=width;
 		canvas.height=height;
@@ -166,7 +220,14 @@
 	function update() {
 		frames++;
 		// 背景区域
-		fgpos=(fgpos-2 )%14;
+		if(currentstate!==gameStatus.Score){
+			fgpos=(fgpos-2 )%14;
+		}
+		// 更新障碍物
+		if(currentstate===gameStatus.Game){
+			pipes.update();
+		}
+
 //		console.log(fgpos);
 		// 更新鸟
 		bird.update();
@@ -191,7 +252,7 @@
 		var width2=width/2;
 
 		// 如果状态是准备游戏
-		if(currentstate===status.Splash){
+		if(currentstate===gameStatus.Splash){
 			// 显示操作提示
 			s_splash.draw(ctx,width2-s_splash.width/2,height-300);
 			// 文本提示
